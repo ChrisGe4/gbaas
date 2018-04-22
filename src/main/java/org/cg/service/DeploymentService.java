@@ -3,7 +3,6 @@ package org.cg.service;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toMap;
 
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
@@ -50,20 +49,16 @@ public class DeploymentService {
 
   public static final String GCLOUD_DIR =
       "/usr/local/google/home/chrisge/exit/google-cloud-sdk/bin/";
-  // public static final String GCLOUD_DIR = "/Users/chrisge/Downloads/google-cloud-sdk/bin";
   public static final String LIST_INSTANCES = "bash gcloud compute instances list";
-  public static final String SET_PROJECT = //GCLOUD_DIR +
+  public static final String SET_PROJECT =
       "gcloud config set project ";
-  public static final String CREATE_VM =// GCLOUD_DIR +
+  public static final String CREATE_VM =
       "gcloud compute instances create :PEERNAME --zone :ZONE --machine-type \"custom-1-6144\" --image \"ubuntu-1604-xenial-v20180418\" --image-project \"ubuntu-os-cloud\" --boot-disk-size \"20\" --boot-disk-type \"pd-standard\" --boot-disk-device-name :PEERNAME ";
   public static final String SCP = "bash "
-      //+ GCLOUD_DIR
       + "gcloud compute scp --recurse --project GCP_PROJECT --zone ZONE FILE PEERNAME:~/DEST_FILE";
   public static final String SCP_TO_SERVER = "bash "
-      //+ GCLOUD_DIR
       + "gcloud compute scp --recurse --project GCP_PROJECT --zone ZONE  PEERNAME:~/FILE DEST";
   public static final String SSH = "bash "
-      //+ GCLOUD_DIR
       + "gcloud compute ssh ";
 
   private static final Logger log = LoggerFactory.getLogger(DeploymentService.class);
@@ -86,16 +81,13 @@ public class DeploymentService {
   public static String ORDERER_CA_IN_CONTAINER = "/etc/hyperledger/crypto/orderer/tls/ca.crt";
   public static String ANCHOR_FILE_SUFFIX = "anchors.tx";
   public static String COMMPOSER_FW_DIR = "/usr/local/google/home/chrisge/.nvm/versions/node/v9.11.1/bin/";
-  public static String CREATE_CARD_CMD = //COMMPOSER_FW_DIR +
+  public static String CREATE_CARD_CMD =
       "composer card create -p CONNECTION_JSON -u PeerAdmin -c ADMIN_PEM -k SK_FILE -r PeerAdmin -r ChannelAdmin -f PeerAdmin@NAME.card";
-  //public static String COMPOSER_CARD_FOLDER = composerPath + "card";
   public static String COMPOSER_IMPORT_CARD_CMD = //COMMPOSER_FW_DIR +
       "composer card import -f PeerAdmin@NAME.card --card PeerAdmin@NAME";
   public static String ORDERER_CA_FILE = "crypto-config/ordererOrganizations/DOMAIN/orderers/orderer.DOMAIN/tls/ca.crt";
   private final ObjectMapper mapper;
   private final AppConfiguration appConfiguration;
-  //mac
-  // public static String workingDir = "/Users/chrisge/blockchain/artifacts/";
   public String cryptoGenCmd;
   private String workingDir;
   private String scriptFile;
@@ -126,7 +118,7 @@ public class DeploymentService {
     config.setChannelName("common");
     config.setProperties(List.of(property1, property2));
     DeploymentService ds = new DeploymentService(mapper, appConfiguration);
-    ds.deploy(config);
+    ds.deploy(config, false);
 
     //for testing
     // Map<String, Map<String, String>> orgNameIpMap = ds.getInstanceNameIPMap(config);
@@ -138,7 +130,7 @@ public class DeploymentService {
   }
 
 
-  public void deploy(NetworkConfig config) {
+  public void deploy(NetworkConfig config, boolean installSoftware) {
 
     workingDir = appConfiguration.WORKING_DIR;
     cryptoGenCmd =
@@ -152,11 +144,11 @@ public class DeploymentService {
     Map<String, Map<String, String>> orgNameIpMap = getInstanceNameIPMap(config);
     copyInstallScripts(orgNameIpMap, config);
     copyInstallScripts(orgNameIpMap, config);
-
-    // setupVm(orgNameIpMap, config);
-    // setupDocker(orgNameIpMap, config);
-    // setupComposer(orgNameIpMap, config);
-
+    setupVm(orgNameIpMap, config);
+    if (installSoftware) {
+      setupDocker(orgNameIpMap, config);
+      setupComposer(orgNameIpMap, config);
+    }
     createCrypto(orgNameIpMap, config);
     Map<String, String> orgPk = createCryptoFiles(orgNameIpMap, config);
     createConfigtxYaml(orgNameIpMap, config);
@@ -185,32 +177,14 @@ public class DeploymentService {
   }
 
   public void initService(NetworkConfig config) {
-    //        try {
-    //            CommandRunner.runCommand(GCLOUD_DIR, SET_PROJECT + config.getGcpProjectName());
-    //        } catch (Throwable t) {
-    //
-    //            throw new CommandFailedToRunException("Cannot run init commands ", t);
-    //        }
 
     try {
       deleteFolders(workingDir);
       createDir(workingDir);
-      // CommandRunner.runCommand(GCLOUD_DIR, "./" + SET_PROJECT + config.getGcpProjectName());
-      // CommandRunner
-      //     .runCommand(List.of("/bin/bash", "-c", SET_PROJECT + config.getGcpProjectName()),
-      //         log);
       Files.deleteIfExists(Paths.get(scriptFile));
       Files.write(Paths.get(scriptFile),
           ("export PATH=$PATH:" + appConfiguration.GCLOUD_DIR + "\n").getBytes(),
           StandardOpenOption.CREATE);
-      // appendToFile(scriptFile, "echo $dir");
-      //
-      // // appendToFile(scriptFile, "dir=$(which gcloud)");
-      // appendToFile(scriptFile,
-      //     "bash -c \"gcloud_dir=${dir:0:$(echo $dir| grep -bo gcloud | sed 's/:.*$//')}\"");
-      // appendToFile(scriptFile, "echo $gcloud_dir");
-      // appendToFile(scriptFile, "echo $(dir:0:$(echo $dir| grep -bo gcloud | sed 's/:.*$//'))");
-      // appendToFile(scriptFile, "export PATH=$PATH:" + appConfiguration.GCLOUD_DIR);
       appendToFile(scriptFile, SET_PROJECT + config.getGcpProjectName());
 
       log.info("script file created");
@@ -234,31 +208,15 @@ public class DeploymentService {
     try {
       for (Property property : config.getProperties()) {
         for (int i = 0; i < property.getNumOfPeers(); i++) {
-          // CommandRunner.runCommand(GCLOUD_DIR,
-          //     CREATE_VM.replaceAll(":PEERNAME", property.getOrg() + PEER_NAME_SUFFIX + i)
-          //         .replaceAll(":ZONE", config.getGcpZoneName()));
-
           CommandRunner.runCommand(List.of("/bin/bash", "-c",
               appConfiguration.GCLOUD_DIR + CREATE_VM
                   .replaceAll(":PEERNAME", property.getOrg() + PEER_NAME_SUFFIX + i)
                   .replaceAll(":ZONE", config.getGcpZoneName())), log);
-
-          // appendToFile(scriptFile,
-          //     CREATE_VM.replaceAll(":PEERNAME", property.getOrg() + PEER_NAME_SUFFIX + i)
-          //         .replaceAll(":ZONE", config.getGcpZoneName()));
-
         }
       }
-      // CommandRunner.runCommand(GCLOUD_DIR,
-      //     CREATE_VM.replaceAll(":PEERNAME", config.getOrdererName())
-      //         .replaceAll(":ZONE", config.getGcpZoneName()));
-
       CommandRunner.runCommand(List.of("/bin/bash", "-c",
           appConfiguration.GCLOUD_DIR + CREATE_VM.replaceAll(":PEERNAME", config.getOrdererName())
               .replaceAll(":ZONE", config.getGcpZoneName())), log);
-      // appendToFile(scriptFile,
-      //     CREATE_VM.replaceAll(":PEERNAME", config.getOrdererName())
-      //         .replaceAll(":ZONE", config.getGcpZoneName()));
     } catch (Throwable t) {
 
       throw new CommandFailedToRunException("Cannot create instances", t);
@@ -270,25 +228,18 @@ public class DeploymentService {
     List<String> orgs =
         config.getProperties().stream().map(Property::getOrg).collect(Collectors.toList());
     orgs.add(config.getOrdererName());
-    System.out.println("orgs = " + orgs);
     Map<String, Map<String, String>> orgNameIpMap = new HashMap<>();
     try {
-      //List<String> vms = CommandRunner.runCommand(GCLOUD_DIR, LIST_INSTANCES);
       List<String> vms = CommandRunner.runCommand(appConfiguration.GCLOUD_DIR, LIST_INSTANCES);
-
       for (String org : orgs) {
         Map<String, String> nameIpMap = getNameIpMap(vms, org);
-        System.out.println("nameIpMap = " + nameIpMap);
-
         orgNameIpMap.put(org, nameIpMap);
       }
-
     } catch (Throwable t) {
 
       throw new CommandFailedToRunException("Cannot get the list of instances", t);
     }
 
-    System.out.println("orgNameIpMap = " + orgNameIpMap);
     return orgNameIpMap;
   }
 
@@ -299,7 +250,6 @@ public class DeploymentService {
         .filter(a -> a[0].startsWith(org) && "RUNNING".equals(a[a.length - 1])).forEach(a -> {
       nameIpMap.put(a[0], a[8]);
     });
-
     return nameIpMap;
   }
 
@@ -316,7 +266,6 @@ public class DeploymentService {
 
           copyFileToGcpVm(workingDir + "install-composer.sh", "install-composer.sh", instance,
               config);
-          // appendToFile(scriptFile, "sleep 2");
           appendToFile(scriptFile, String
               .join("", SSH, instance, " --zone ", config.getGcpZoneName(),
                   " --command \" chmod u+x init-docker.sh; chmod u+x install-composer.sh; chmod u+x setup.sh\""));
@@ -365,11 +314,8 @@ public class DeploymentService {
       NetworkConfig config) {
     try {
       log.info("Generating crypto files");
-      //createDir(workingDir+"crypto-config");
       deleteFolders(workingDir + "crypto-config");
       CommandRunner.runCommand(List.of("/bin/bash", "-c", cryptoGenCmd), log);
-      // CommandRunner
-      //     .runCommand(System.getProperty( "user.home" )+"/bin", "./cryptogen generate --config=" + workingDir + "cryptogen.yaml");
       Set<String> orgs = Sets.newHashSet(orgNameIpMap.keySet());
       orgs.remove(config.getOrdererName());
       Map<String, String> orgDomainPkMap = new HashMap<>(orgs.size());
@@ -406,24 +352,6 @@ public class DeploymentService {
       for (String instance : orgNameIpMap.get(org).keySet()) {
         try {
           String path = cryptoPath;
-
-          // if (instance.equals(config.getOrdererName())) {
-          //   appendToFile(scriptFile, String
-          //       .join("", "gcloud compute ssh ", instance, " --zone ", config.getGcpZoneName(),
-          //           " --command \" mkdir  -p -m u+x crypto-config/ \""));
-          //   copyFileToGcpVm(path, "", instance, config);
-          // } else {
-          //   path = cryptoPath + "peerOrganizations/" + domain + "/";
-          //   appendToFile(scriptFile, String
-          //       .join("", "gcloud compute ssh ", instance, " --zone ", config.getGcpZoneName(),
-          //           " --command \" mkdir -m u+x -p crypto-config/peerOrganizations/ \""));
-          //   copyFileToGcpVm(path, "crypto-config/peerOrganizations", instance, config);
-          //
-          // }
-
-          // appendToFile(scriptFile, String
-          //     .join("", SSH, instance, " --zone ", config.getGcpZoneName(),
-          //         " --command \" mkdir  -p -m u+x crypto-config/ \""));
           copyFileToGcpVm(path, PROJECT_VM_DIR, instance, config);
         } catch (Throwable t) {
           throw new RuntimeException("Cannot write to script file ", t);
@@ -445,7 +373,6 @@ public class DeploymentService {
       String template = new String(Files.readAllBytes(
           Paths.get(Resources.getResource("template/configtxtemplate.yaml").toURI())));
       Set<String> orgs = orgNameIpMap.keySet();
-      //orgs.remove(config.getOrdererName());
       String orgNames = orgs.stream().filter(o -> !o.equals(config.getOrdererName()))
           .map(o -> ORG_NAMES + o).collect(Collectors.joining("\n"));
 
@@ -464,7 +391,6 @@ public class DeploymentService {
 
       Files.write(Paths.get(configtxfPath), content.getBytes(), StandardOpenOption.CREATE);
       copyFileToGcpVm(configtxfPath, "configtx.yaml", config.getOrdererName(), config);
-
 
     } catch (Throwable e) {
       throw new RuntimeException("Cannot create configtx yaml file ", e);
@@ -514,11 +440,6 @@ public class DeploymentService {
       for (String instance : orgNameIpMap.get(org).keySet()) {
         try {
           String path = workingDir + "channel";
-
-          // appendToFile(scriptFile, String
-          //     .join("", SSH, instance, " --zone ",
-          //         config.getGcpZoneName(),
-          //         " --command \" mkdir  -p -m u+x channel/ \""));
           appendToFile(scriptFile, "echo copying channel folder to " + instance);
           copyFileToGcpVm(path, PROJECT_VM_DIR, instance, config);
         } catch (Throwable t) {
@@ -537,8 +458,6 @@ public class DeploymentService {
       NetworkConfig config) {
     log.info("Calling distributeChaincode method");
     try {
-      // Files.copy(Paths.get(Resources.getResource("chaincode").toURI()),
-      //     Paths.get(workingDir, "chaincode"), StandardCopyOption.REPLACE_EXISTING);
 
       FileUtils.copyDirectory(new File(Resources.getResource("chaincode").toURI()),
           new File(Paths.get(workingDir, "chaincode").toUri()), false);
@@ -551,10 +470,6 @@ public class DeploymentService {
         try {
           String path = workingDir + "chaincode";
 
-          // appendToFile(scriptFile, String
-          //     .join("", SSH, instance, " --zone ",
-          //         config.getGcpZoneName(),
-          //         " --command \" mkdir -p -m u+x chaincode/ \""));
           appendToFile(scriptFile, "echo copying chaincode folder to " + instance);
           copyFileToGcpVm(path, PROJECT_VM_DIR, instance, config);
         } catch (Throwable t) {
@@ -808,12 +723,6 @@ public class DeploymentService {
     copyVmFileToGCP(config.getChannelName() + ".block", workingDir, instance, config);
     appendToFile(scriptFile, "echo " + config.getChannelName() + ".block copied to server");
 
-    // cmd = String
-    //     .join("", SSH, instance, " --zone ", config.getGcpZoneName(),
-    //         " --command \"", "docker-compose down", "\"");
-    // appendToFile(scriptFile, cmd);
-
-    //return instance;
   }
 
   public void distributeChannelBlock(Map<String, Map<String, String>> orgNameIpMap,
@@ -852,14 +761,6 @@ public class DeploymentService {
         appendToFile(scriptFile, cmd);
       }
     }
-    // orgNameIpMap.keySet().stream().filter(o -> !o.equals(config.getOrdererName())).map(org->
-    //     orgNameIpMap.get(org)).map(Map::keySet).forEach(ins ->
-    //     ins.stream().forEach(vm -> {
-    //
-    //
-    //         }
-    //     )
-    // );
 
   }
 
@@ -1070,8 +971,6 @@ public class DeploymentService {
 
         copyFileToGcpVm(fileName, appConfiguration.COMPOSER_CONNECTION_FILE + ".json",
             host, config);
-        //                copyFileToGcpVm(workingDir + "base.yaml", PROJECT_VM_DIR + "base.yaml",
-        //                    config.getOrdererName(), config);
 
       }
 
@@ -1188,16 +1087,6 @@ public class DeploymentService {
 
     try {
 
-      //            List<String> result = CommandRunner.runCommand(GCLOUD_DIR,
-      //                SCP.replace(":GCP_PROJECT", config.getGcpProjectName())
-      //                    .replace(":ZONE", config.getGcpZoneName()).replace(":FILE", file)
-      //                    .replace(":PEERNAME", peerName));
-
-      //            Files.write(Paths.get(workingDir + scriptFile),
-      //                SCP.concat("\n").replace(":GCP_PROJECT", config.getGcpProjectName())
-      //                    .replace(":ZONE", config.getGcpZoneName()).replace(":FILE", file)
-      //                    .replace(":PEERNAME", peerName).getBytes(), StandardOpenOption.APPEND);
-
       appendToFile(scriptFile, SCP.replace("GCP_PROJECT", config.getGcpProjectName())
           .replace("ZONE", config.getGcpZoneName()).replace("PEERNAME", peerName)
           .replace("DEST_FILE", destFileName).replace("FILE", file));
@@ -1212,17 +1101,6 @@ public class DeploymentService {
       NetworkConfig config) {
 
     try {
-
-      //            List<String> result = CommandRunner.runCommand(GCLOUD_DIR,
-      //                SCP.replace(":GCP_PROJECT", config.getGcpProjectName())
-      //                    .replace(":ZONE", config.getGcpZoneName()).replace(":FILE", file)
-      //                    .replace(":PEERNAME", peerName));
-
-      //            Files.write(Paths.get(workingDir + scriptFile),
-      //                SCP.concat("\n").replace(":GCP_PROJECT", config.getGcpProjectName())
-      //                    .replace(":ZONE", config.getGcpZoneName()).replace(":FILE", file)
-      //                    .replace(":PEERNAME", peerName).getBytes(), StandardOpenOption.APPEND);
-
       appendToFile(scriptFile,
           SCP_TO_SERVER.replace("GCP_PROJECT", config.getGcpProjectName())
               .replace("ZONE", config.getGcpZoneName()).replace("PEERNAME", peerName)
@@ -1271,6 +1149,5 @@ public class DeploymentService {
     }
 
   }
-
 
 }
