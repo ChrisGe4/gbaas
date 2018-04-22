@@ -1,0 +1,6 @@
+      "PEER_NAME": {
+				"requests": "grpcs://PEER_NAME.ORG.DOMAIN:7051",
+				"events":   "grpcs://PEER_NAME.ORG.DOMAIN:7053",
+				"server-hostname": "PEER_NAME.ORG.DOMAIN",
+				"tls_cacerts": "crypto-config/peerOrganizations/ORG.DOMAIN/peers/PEER_NAME.ORG.DOMAIN/tls/ca.crt"
+			}

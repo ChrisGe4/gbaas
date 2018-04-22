@@ -1,0 +1,40 @@
+{
+  "name": "CONNECTION_NAME",
+  "x-type": "hlfv11",
+  "version": "1.1.0",
+  "client": {
+    "organization": "ORG_NAME",
+    "connection": {
+      "timeout": {
+        "peer": {
+          "endorser": "300",
+          "eventHub": "300",
+          "eventReg": "300"
+        },
+        "orderer": "300"
+      }
+    }
+  },
+  "channels": {
+    "CHANNEL_NAME": {
+      "orderers": [
+        ORDERER_NAMES
+      ],
+      "peers": {
+        PEERS_CHANNEL_INFO
+      }
+    }
+  },
+  "organizations": {
+    ORGS_CONFIG
+  },
+  "orderers": {
+    ORDERER_CONFIG
+  },
+  "peers": {
+    PEERS_CONFIG
+  },
+  "certificateAuthorities": {
+    CA_CONFIG
+  }
+}

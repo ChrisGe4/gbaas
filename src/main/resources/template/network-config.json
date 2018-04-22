@@ -1,0 +1,51 @@
+{
+  "network-config": {
+    "orderer": {
+      "url": "grpcs://orderer.sample.com:7050",
+      "server-hostname": "orderer.sample.com",
+      "tls_cacerts": "crypto-config/ordererOrganizations/sample.com/orderers/orderer.sample.com/tls/ca.crt"
+    },
+    "chris": {
+      "name": "peerchris",
+      "mspid": "chrisMSP",
+      "ca": "https://ca.chris.sample.com:7054",
+      "peer0": {
+        "requests": "grpcs://peer0.chris.sample.com:7051",
+        "events": "grpcs://peer0.chris.sample.com:7053",
+        "server-hostname": "peer0.chris.sample.com",
+        "tls_cacerts": "crypto-config/peerOrganizations/chris.sample.com/peers/peer0.chris.sample.com/tls/ca.crt"
+      },
+      "peer1": {
+        "requests": "grpcs://peer1.chris.sample.com:7051",
+        "events": "grpcs://peer1.chris.sample.com:7053",
+        "server-hostname": "peer1.chris.sample.com",
+        "tls_cacerts": "crypto-config/peerOrganizations/chris.sample.com/peers/peer1.chris.sample.com/tls/ca.crt"
+      },
+      "admin": {
+        "key": "crypto-config/peerOrganizations/chris.sample.com/users/Admin@chris.sample.com/msp/keystore",
+        "cert": "crypto-config/peerOrganizations/chris.sample.com/users/Admin@chris.sample.com/msp/signcerts"
+      }
+    },
+    "test6": {
+      "name": "peertest6",
+      "mspid": "test6MSP",
+      "ca": "https://ca.test6.sample.com:7054",
+      "peer0": {
+        "requests": "grpcs://peer0.test6.sample.com:7051",
+        "events": "grpcs://peer0.test6.sample.com:7053",
+        "server-hostname": "peer0.test6.sample.com",
+        "tls_cacerts": "crypto-config/peerOrganizations/test6.sample.com/peers/peer0.test6.sample.com/tls/ca.crt"
+      },
+      "peer1": {
+        "requests": "grpcs://peer1.test6.sample.com:7051",
+        "events": "grpcs://peer1.test6.sample.com:7053",
+        "server-hostname": "peer1.test6.sample.com",
+        "tls_cacerts": "crypto-config/peerOrganizations/test6.sample.com/peers/peer1.test6.sample.com/tls/ca.crt"
+      },
+      "admin": {
+        "key": "crypto-config/peerOrganizations/test6.sample.com/users/Admin@test6.sample.com/msp/keystore",
+        "cert": "crypto-config/peerOrganizations/test6.sample.com/users/Admin@test6.sample.com/msp/signcerts"
+      }
+    }
+  }
+}

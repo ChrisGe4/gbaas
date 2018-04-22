@@ -1,0 +1,10 @@
+		"ORG": {
+			"name":  "peerORG",
+			"mspid": "ORGMSP",
+			"ca": "https://ca.ORG.DOMAIN:7054",
+		  CONFIG_PEERS
+			"admin": {
+				"key":  "crypto-config/peerOrganizations/ORG.DOMAIN/users/Admin@ORG.DOMAIN/msp/keystore",
+				"cert": "crypto-config/peerOrganizations/ORG.DOMAIN/users/Admin@ORG.DOMAIN/msp/signcerts"
+			}
+		},}}

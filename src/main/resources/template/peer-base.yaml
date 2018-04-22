@@ -1,0 +1,22 @@
+
+  PEER_NAME.ORG.DOMAIN:
+    container_name: PEER_NAME.ORG.DOMAIN
+    extends:
+      file:   base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=PEER_NAME.ORG.DOMAIN
+      - CORE_PEER_LOCALMSPID=ORGMSP
+      - CORE_PEER_ADDRESS=PEER_NAME.ORG.DOMAIN:7051
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+    ports:
+      - PEER_PORT:7051
+      - PEER_EVENT_PORT:7053
+    volumes:
+        - ./crypto-config/peerOrganizations/ORG.DOMAIN/peers/PEER_NAME.ORG.DOMAIN/:/etc/hyperledger/crypto/peer
+        - ./channel:/opt/gopath/src/org/peer/channel-artifacts
+    depends_on:
+      - ca.ORG.DOMAIN
+    extra_hosts:
+PEER_EXTRA_HOSTS
+
