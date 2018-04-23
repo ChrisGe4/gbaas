@@ -11,11 +11,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Created by chrisge on 11/9/17.
  */
 public class CommandRunner {
+
+  private static final Logger log = LoggerFactory.getLogger(CommandRunner.class);
 
 
   public static List<String> runCommand(String dir, String cmd)
@@ -29,6 +32,7 @@ public class CommandRunner {
     }
     Process process = pb.start();
     System.out.println("Running command " + cmd);
+    log.info("Running command " + cmd);
 
     BufferedReader bri = new BufferedReader(new InputStreamReader(process.getInputStream()));
     // String output = bri.readLine();
