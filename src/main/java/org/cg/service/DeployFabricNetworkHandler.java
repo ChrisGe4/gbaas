@@ -60,8 +60,8 @@ public class DeployFabricNetworkHandler {
         return "succeed";
     }
 
-    @GetMapping("/hello-world")
-    public String sayHello() throws JsonProcessingException {
+    @GetMapping("/sample")
+    public String sampleConfig() throws JsonProcessingException {
 
         Property property1 = new Property();
         property1.setOrg("google");
