@@ -4,7 +4,6 @@ package org.cg.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
-import java.util.Map;
 import org.cg.config.AppConfiguration;
 import org.cg.pojo.NetworkConfig;
 import org.cg.pojo.Property;
@@ -44,21 +43,21 @@ public class DeployFabricNetworkHandler {
   public String deployFabricNetwork(
       @RequestParam(value = "create_instance", defaultValue = "false", required = false) Boolean createInstance,
       @RequestParam(value = "install_software", defaultValue = "false", required = false) Boolean installSoftware,
-      @RequestParam(value = "deploy_composer", defaultValue = "false", required = false) Boolean deployComposer,
+      // @RequestParam(value = "deploy_composer", defaultValue = "false", required = false) Boolean deployComposer,
       @RequestBody NetworkConfig config) {
 
-    Map<String, Map<String, String>> orgNameIpMap =
-        service.deployFabric(config, createInstance, installSoftware);
-    if (deployComposer) {
-      service.deployComposer(config, orgNameIpMap);
-    }
+    // Map<String, Map<String, String>> orgNameIpMap =
+    service.deployFabric(config, createInstance, installSoftware);
+    // if (deployComposer) {
+    //   service.deployComposer(config, orgNameIpMap);
+    // }
 
     service.runScript();
     return "succeed";
   }
 
 
-  // @PostMapping(value = "/composer", headers = "Accept=application/json")
+  @PostMapping(value = "/composer", headers = "Accept=application/json")
   public String deployComposer(@RequestBody NetworkConfig config) {
     service.deployComposer(config, service.getInstanceNameIPMap(config));
     service.runScript();

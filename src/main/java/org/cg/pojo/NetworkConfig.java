@@ -8,6 +8,7 @@ import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
+    "networkName",
     "gcpProjectName",
     "gcpZoneName",
     "ordererName",
@@ -16,65 +17,77 @@ import java.util.List;
 })
 public class NetworkConfig {
 
-    @JsonProperty("gcpProjectName")
-    private String gcpProjectName;
-    @JsonProperty("gcpZoneName")
-    private String gcpZoneName;
-    @JsonProperty("ordererName")
-    private String ordererName;
-    @JsonProperty("channelName")
-    private String channelName;
-    @JsonProperty("properties")
-    private List<Property> properties = null;
+  @JsonProperty("networkName")
+  private String networkName;
+  @JsonProperty("gcpProjectName")
+  private String gcpProjectName;
+  @JsonProperty("gcpZoneName")
+  private String gcpZoneName;
+  @JsonProperty("ordererName")
+  private String ordererName;
+  @JsonProperty("channelName")
+  private String channelName;
+  @JsonProperty("properties")
+  private List<Property> properties = null;
 
-    @JsonProperty("gcpProjectName")
-    public String getGcpProjectName() {
-        return gcpProjectName;
-    }
+  @JsonProperty("networkName")
+  public String getNetworkName() {
+    return networkName;
+  }
 
-    @JsonProperty("gcpProjectName")
-    public void setGcpProjectName(String gcpProjectName) {
-        this.gcpProjectName = gcpProjectName;
-    }
+  @JsonProperty("networkName")
+  public void setNetworkName(String networkName) {
+    this.networkName = networkName;
+  }
 
-    @JsonProperty("gcpZoneName")
-    public String getGcpZoneName() {
-        return gcpZoneName;
-    }
+  @JsonProperty("gcpProjectName")
+  public String getGcpProjectName() {
+    return gcpProjectName;
+  }
 
-    @JsonProperty("gcpZoneName")
-    public void setGcpZoneName(String gcpZoneName) {
-        this.gcpZoneName = gcpZoneName;
-    }
+  @JsonProperty("gcpProjectName")
+  public void setGcpProjectName(String gcpProjectName) {
+    this.gcpProjectName = gcpProjectName;
+  }
 
-    @JsonProperty("ordererName")
-    public String getOrdererName() {
-        return ordererName;
-    }
+  @JsonProperty("gcpZoneName")
+  public String getGcpZoneName() {
+    return gcpZoneName;
+  }
 
-    @JsonProperty("ordererName")
-    public void setOrdererName(String ordererName) {
-        this.ordererName = ordererName;
-    }
+  @JsonProperty("gcpZoneName")
+  public void setGcpZoneName(String gcpZoneName) {
+    this.gcpZoneName = gcpZoneName;
+  }
 
-    @JsonProperty("channelName")
-    public String getChannelName() {
-        return channelName;
-    }
+  @JsonProperty("ordererName")
+  public String getOrdererName() {
+    return ordererName;
+  }
 
-    @JsonProperty("channelName")
-    public void setChannelName(String channelName) {
-        this.channelName = channelName;
-    }
+  @JsonProperty("ordererName")
+  public void setOrdererName(String ordererName) {
+    this.ordererName = ordererName;
+  }
 
-    @JsonProperty("properties")
-    public List<Property> getProperties() {
-        return properties;
-    }
+  @JsonProperty("channelName")
+  public String getChannelName() {
+    return channelName;
+  }
 
-    @JsonProperty("properties")
-    public void setProperties(List<Property> properties) {
-        this.properties = properties;
-    }
+  @JsonProperty("channelName")
+  public void setChannelName(String channelName) {
+    this.channelName = channelName;
+  }
+
+  @JsonProperty("properties")
+  public List<Property> getProperties() {
+    return properties;
+  }
+
+  @JsonProperty("properties")
+  public void setProperties(List<Property> properties) {
+    this.properties = properties;
+  }
 
 }

@@ -10,7 +10,13 @@ chmod u+x prereqs-ubuntu.sh
 bash prereqs-ubuntu.sh
 
 echo 2. Update Path
-export PATH=$PATH:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/)/bin
+
+BIN_PATH=$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/)/bin
+sudo ln -s $BIN_PATH/npm /usr/bin/npm
+sudo ln -s $BIN_PATH/node /usr/bin/node
+sudo ln -s $BIN_PATH/composer /usr/bin/composer
+export PATH=$PATH:$BIN_PATH
+
 
 echo 3. Install composer
 

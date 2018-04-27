@@ -46,10 +46,7 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class DeploymentService {
-  private static final Logger log = LoggerFactory.getLogger(DeploymentService.class);
 
-  public static final String GCLOUD_DIR =
-      "/usr/local/google/home/chrisge/exit/google-cloud-sdk/bin/";
   public static final String LIST_INSTANCES = "bash gcloud compute instances list";
   public static final String SET_PROJECT = "gcloud config set project ";
   public static final String CREATE_VM =
@@ -59,7 +56,7 @@ public class DeploymentService {
   public static final String SCP_TO_SERVER = "bash "
       + "gcloud compute scp --recurse --project GCP_PROJECT --zone ZONE  PEERNAME:~/FILE DEST";
   public static final String SSH = "bash " + "gcloud compute ssh ";
-
+  private static final Logger log = LoggerFactory.getLogger(DeploymentService.class);
   public static String ORG_NAMES = "                    - *";
   public static String PROJECT_VM_DIR = "gbaas/";
   public static String PEER_NAME_SUFFIX = "-peer";
@@ -83,8 +80,11 @@ public class DeploymentService {
       "/usr/local/google/home/chrisge/.nvm/versions/node/v9.11.1/bin/";
   public static String CREATE_CARD_CMD =
       "composer card create -p CONNECTION_JSON -u PeerAdmin -c ADMIN_PEM -k SK_FILE -r PeerAdmin -r ChannelAdmin -f PeerAdmin@NAME.card";
-  public static String COMPOSER_IMPORT_CARD_CMD = //COMMPOSER_FW_DIR +
+  public static String COMPOSER_IMPORT_CARD_CMD =
       "composer card import -f PeerAdmin@NAME.card --card PeerAdmin@NAME";
+  public static String COMPOSER_DELETE_CARD_CMD =
+      "composer card delete -c PeerAdmin@NAME";
+
   public static String ORDERER_CA_FILE =
       "crypto-config/ordererOrganizations/DOMAIN/orderers/orderer.DOMAIN/tls/ca.crt";
   private final ObjectMapper mapper;
@@ -100,12 +100,7 @@ public class DeploymentService {
   public DeploymentService(ObjectMapper mapper, AppConfiguration appConfiguration) {
     this.mapper = mapper;
     this.appConfiguration = appConfiguration;
-    workingDir = appConfiguration.WORKING_DIR;
-    composerPath = workingDir + "composer/";
-    cryptoGenCmd = "~/bin/cryptogen generate --output=" + workingDir + "crypto-config --config="
-        + workingDir + "cryptogen.yaml";
-    scriptFile = workingDir + "script.sh";
-    cryptoPath = workingDir + "crypto-config/";
+
   }
 
   public static void main(String[] args) {
@@ -126,10 +121,10 @@ public class DeploymentService {
     config.setProperties(List.of(property1, property2));
     DeploymentService ds = new DeploymentService(mapper, appConfiguration);
 
-    // Map<String, Map<String, String>> orgNameIpMap = ds.deployFabric(config, false, false);
+    //Map<String, Map<String, String>> orgNameIpMap = ds.deployFabric(config, false, false);
 
     //for testing
-    // Map<String, Map<String, String>> orgNameIpMap = ds.getInstanceNameIPMap(config);
+    Map<String, Map<String, String>> orgNameIpMap = ds.getInstanceNameIPMap(config);
     //
     // ds.createComposerConnectionFile(orgNameIpMap, config);
     // ds.createComposerAdminCard(orgNameIpMap, config);
@@ -140,12 +135,14 @@ public class DeploymentService {
 
   public Map<String, Map<String, String>> deployFabric(NetworkConfig config,
       boolean createInstance, boolean installSoftware) {
-
-    initService(config);
+    initialEnvVariables(config);
     if (createInstance) {
       createInstances(config);
     }
     Map<String, Map<String, String>> orgNameIpMap = getInstanceNameIPMap(config);
+    log.info("The instance list is " + orgNameIpMap);
+    initService(config);
+
     copyInstallScripts(orgNameIpMap, config);
     copyInstallScripts(orgNameIpMap, config);
     setupVm(orgNameIpMap, config);
@@ -174,17 +171,26 @@ public class DeploymentService {
     // ds.installChaincode(orgNameIpMap, config);
     //may not need this
     //ds.copyChannelBlockToContainer(orgNameIpMap, config);
-
-    // runScript();
     return orgNameIpMap;
   }
 
   public void deployComposer(NetworkConfig config,
       Map<String, Map<String, String>> orgNameIpMap) {
-    workingDir = appConfiguration.WORKING_DIR;
-    composerPath = workingDir + "composer/";
+    initialEnvVariables(config);
+    createScriptFile(config);
     createComposerConnectionFile(orgNameIpMap, config);
     createComposerAdminCard(orgNameIpMap, config);
+
+  }
+
+  private void initialEnvVariables(NetworkConfig config) {
+
+    workingDir = appConfiguration.WORKING_DIR + config.getNetworkName() + "/";
+    composerPath = workingDir + "composer/";
+    cryptoGenCmd = "~/bin/cryptogen generate --output=" + workingDir + "crypto-config --config="
+        + workingDir + "cryptogen.yaml";
+    scriptFile = workingDir + "script.sh";
+    cryptoPath = workingDir + "crypto-config/";
 
   }
 
@@ -193,14 +199,7 @@ public class DeploymentService {
     try {
       deleteFolders(workingDir);
       createDir(workingDir);
-      Files.deleteIfExists(Paths.get(scriptFile));
-      Files.write(Paths.get(scriptFile),
-          ("export PATH=$PATH:" + appConfiguration.GCLOUD_DIR + "\n").getBytes(),
-          StandardOpenOption.CREATE);
-      appendToFile(scriptFile, SET_PROJECT + config.getGcpProjectName());
-
-      log.info("script file created");
-      appendToFile(scriptFile, "");
+      createScriptFile(config);
       Files.copy(Paths.get(Resources.getResource("template/base.yaml").toURI()),
           Paths.get(workingDir, "base.yaml"), StandardCopyOption.REPLACE_EXISTING);
       Files.copy(Paths.get(Resources.getResource("template/init-docker.sh").toURI()),
@@ -210,9 +209,25 @@ public class DeploymentService {
       Files.copy(Paths.get(Resources.getResource("template/install-composer.sh").toURI()),
           Paths.get(workingDir, "install-composer.sh"), StandardCopyOption.REPLACE_EXISTING);
     } catch (Throwable t) {
-      throw new RuntimeException("Cannot create script file ", t);
+      throw new RuntimeException("Cannot init the service ", t);
     }
 
+  }
+
+
+  private void createScriptFile(NetworkConfig config) {
+    try {
+      Files.deleteIfExists(Paths.get(scriptFile));
+      Files.write(Paths.get(scriptFile),
+          ("export PATH=$PATH:" + appConfiguration.GCLOUD_DIR + "\n").getBytes(),
+          StandardOpenOption.CREATE);
+      appendToFile(scriptFile, SET_PROJECT + config.getGcpProjectName());
+
+      log.info("script file created");
+      appendToFile(scriptFile, "");
+    } catch (Throwable t) {
+      throw new RuntimeException("Cannot create script file ", t);
+    }
   }
 
   public void createInstances(NetworkConfig config) {
@@ -243,8 +258,8 @@ public class DeploymentService {
     orgs.add(config.getOrdererName());
     Map<String, Map<String, String>> orgNameIpMap = new HashMap<>();
     try {
-      List<String> vms =
-          CommandRunner.runCommand(appConfiguration.GCLOUD_DIR, LIST_INSTANCES);
+      List<String> vms = CommandRunner.runCommand(appConfiguration.GCLOUD_DIR, LIST_INSTANCES);
+
       for (String org : orgs) {
         Map<String, String> nameIpMap = getNameIpMap(vms, org);
         orgNameIpMap.put(org, nameIpMap);
@@ -616,7 +631,7 @@ public class DeploymentService {
 
   public void setupDocker(Map<String, Map<String, String>> orgNameIpMap, NetworkConfig config) {
     try {
-      String cmd = " --command \"init-docker.sh\"";
+      String cmd = " --command \"sh init-docker.sh\"";
 
       for (String org : orgNameIpMap.keySet()) {
         for (String instance : orgNameIpMap.get(org).keySet()) {
@@ -632,7 +647,7 @@ public class DeploymentService {
 
   public void setupVm(Map<String, Map<String, String>> orgNameIpMap, NetworkConfig config) {
     try {
-      String cmd = " --command \"setup.sh\"";
+      String cmd = " --command \"sh setup.sh\"";
 
       for (String org : orgNameIpMap.keySet()) {
         for (String instance : orgNameIpMap.get(org).keySet()) {
@@ -649,7 +664,7 @@ public class DeploymentService {
 
   public void setupComposer(Map<String, Map<String, String>> orgNameIpMap, NetworkConfig config) {
     try {
-      String cmd = " --command \"install-composer.sh\"";
+      String cmd = " --command \"sh install-composer.sh\"";
 
       for (String org : orgNameIpMap.keySet()) {
         for (String instance : orgNameIpMap.get(org).keySet()) {
@@ -924,7 +939,6 @@ public class DeploymentService {
       String ordererConfigJson =
           "\"" + orderer + "\":" + mapper.writeValueAsString(ordererConfig);
 
-      System.out.println("hostOrgMap = " + hostOrgMap);
       String peersConfigJson = hostsIpMap.entrySet().stream().map(e -> {
         try {
           String host = e.getKey();
@@ -982,10 +996,10 @@ public class DeploymentService {
         String fileName = String.join("", composerPath,
             CONNECTION_FILE_NAME_TEMPLATE.replace("NETWORKNAME", networkName)
                 .replace("ORG", org), ".json");
+        log.info("fileName = " + fileName);
         Files.write(Paths.get(fileName), content.getBytes(), StandardOpenOption.CREATE);
-        //                appendToFile(scriptFile, "echo copying file " + fileName);
         String host = String.join("-", org, "peer0");
-
+        appendToFile(scriptFile, "echo copying connection.json file to " + host);
         copyFileToGcpVm(fileName, appConfiguration.COMPOSER_CONNECTION_FILE + ".json", host,
             config);
 
@@ -1045,39 +1059,38 @@ public class DeploymentService {
         // copyFileToGcpVm(cardFile, PROJECT_VM_DIR + "connection.yaml", host, config);
         String cardName = CONNECTION_FILE_NAME_TEMPLATE.replace("NETWORKNAME", networkName)
             .replace("ORG", org);
-        String command =
+        String createCardCommand =
             CREATE_CARD_CMD.replace("CONNECTION_JSON", connectionFile + ".json")
                 .replace("ADMIN_PEM", adminPemFileFolder + "signcerts/A*.pem")
                 .replace("SK_FILE", adminPemFileFolder + "keystore/*_sk")
                 .replace("NAME", cardName);
         //.replace("FOLDER", COMPOSER_CARD_FOLDER);
+        String deleteOldCardCmd = COMPOSER_DELETE_CARD_CMD.replace("NAME", cardName);
+
         String cardFile = "PeerAdmin@" + cardName;
         // CommandRunner.runCommand(List.of("/bin/bash", "-c", COMMPOSER_FW_DIR
         //         + "composer card create -p ~/blockchain/artifacts/composer/boa-google-network-connection-boa.json -u PeerAdmin -c ~/blockchain/artifacts/crypto-config/peerOrganizations/boa.sample.com/users/Admin@boa.sample.com/msp/signcerts/Admin@boa.sample.com-cert.pem -k ~/blockchain/artifacts/crypto-config/peerOrganizations/boa.sample.com/users/Admin@boa.sample.com/msp/keystore/*_sk -r PeerAdmin -r ChannelAdmin -f ~/blockchain/artifacts/composer/PeerAdmin@boa.card"),
         //     log);
 
         String host = String.join("-", org, "peer0");
-
+        appendToFile(scriptFile, "echo Deleting file " + cardFile + " in " + host);
+        appendToFile(scriptFile, String
+            .join("", SSH, host, " --zone ", config.getGcpZoneName(), " --command \" ",
+                deleteOldCardCmd, "\""));
         String gcpCmd = String
             .join("", SSH, host, " --zone ", config.getGcpZoneName(), " --command \"",
-                command, "\"");
-
-        appendToFile(scriptFile, "echo creating file " + cardFile + ".card");
-        // appendToFile(scriptFile,
-        //     "export PATH=$PATH:$HOME/.nvm/versions/node/$(ls $HOME/.nvm/versions/node/)/bin\n");
+                createCardCommand, "\"");
+        appendToFile(scriptFile, "echo creating file " + cardFile + ".card" + " in " + host);
         appendToFile(scriptFile, gcpCmd);
-
         String importCardCmd = COMPOSER_IMPORT_CARD_CMD.replaceAll("NAME", cardFile);
         appendToFile(scriptFile, String
             .join("", SSH, host, " --zone ", config.getGcpZoneName(), " --command \" ",
                 importCardCmd, "\""));
-
       }
       log.info("Composer admin cards were created");
 
 
     } catch (Throwable t) {
-      t.printStackTrace();
       throw new RuntimeException("Cannot Composer admin cards files ", t);
     }
   }

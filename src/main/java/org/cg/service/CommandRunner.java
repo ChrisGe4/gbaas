@@ -32,7 +32,6 @@ public class CommandRunner {
     }
     Process process = pb.start();
     System.out.println("Running command " + cmd);
-    log.info("Running command " + cmd);
 
     BufferedReader bri = new BufferedReader(new InputStreamReader(process.getInputStream()));
     // String output = bri.readLine();
