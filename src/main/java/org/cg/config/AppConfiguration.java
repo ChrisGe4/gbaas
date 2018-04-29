@@ -16,7 +16,7 @@ public class AppConfiguration {
   public String ORDERER_PORT = "7050";
   @Value("${ca.port:7054}")
   public String CA_PORT = "7054";
-  @Value("${working.dir:/usr/local/google/home/chrisge/blockchain/artifacts/}")
+  @Value("${working.dir:./blockchain/artifacts/}")
   public String WORKING_DIR = "/usr/local/google/home/chrisge/blockchain/artifacts/";
   @Value("${peer.port:7051}")
   public String PEER_PORT = "7051";
