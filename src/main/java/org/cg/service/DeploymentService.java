@@ -44,6 +44,8 @@ public class DeploymentService {
     private static final Logger log = LoggerFactory.getLogger(DeploymentService.class);
     public static String ORG_NAMES = "                    - *";
     public static String PROJECT_VM_DIR = "gbaas/";
+    public static String CRYPTO_DIR = "crypto-config/";
+
     public static String PEER_NAME_SUFFIX = "-peer";
     public static String EXTRA_HOSTS_PREFIX = "       - ";
     public static String CONTAINER_WORKING_DIR = "/etc/hyperledger/artifacts/";
@@ -51,9 +53,9 @@ public class DeploymentService {
         "docker-compose -f ./gbaas/docker-compose.yaml run CLI bash -c \\\"COMMAND\\\"";
     public static String MSP_SUFFIX = "MSP";
     public static String PEER_CA_FILE =
-        "crypto-config/peerOrganizations/ORG.DOMAIN/peers/peer0.ORG.DOMAIN/tls/ca.crt";
+        "peerOrganizations/ORG.DOMAIN/peers/peer0.ORG.DOMAIN/tls/ca.crt";
     public static String CRYPTO_FOLDER_FOR_COMPOSER =
-        PROJECT_VM_DIR + "crypto-config/peerOrganizations/ORG.DOMAIN/users/Admin@ORG.DOMAIN/msp/";
+        PROJECT_VM_DIR + CRYPTO_DIR + "peerOrganizations/ORG.DOMAIN/users/Admin@ORG.DOMAIN/msp/";
     public static String ORG_PLACEHOLDER = "ORG";
     public static String DOMAIN_PLACEHOLDER = "DOMAIN";
     public static String CONNECTION_FILE_NAME_TEMPLATE = "NETWORKNAME-connection-ORG";
@@ -70,7 +72,11 @@ public class DeploymentService {
     public static String COMPOSER_DELETE_CARD_CMD = "composer card delete -c PeerAdmin@NAME";
 
     public static String ORDERER_CA_FILE =
-        "crypto-config/ordererOrganizations/DOMAIN/orderers/orderer.DOMAIN/tls/ca.crt";
+        "ordererOrganizations/DOMAIN/orderers/orderer.DOMAIN/tls/ca.crt";
+
+    public static String CRYPTO_DIR_PEER = "peerOrganizations/ORG.DOMAIN/";
+    public static String CRYPTO_DIR_ORDERER = "ordererOrganizations/DOMAIN/";
+
     private final ObjectMapper mapper;
     private final AppConfiguration appConfiguration;
     public String cryptoGenCmd;
@@ -174,7 +180,7 @@ public class DeploymentService {
         cryptoGenCmd = "~/bin/cryptogen generate --output=" + workingDir + "crypto-config --config="
             + workingDir + "cryptogen.yaml";
         scriptFile = workingDir + "script.sh";
-        cryptoPath = workingDir + "crypto-config/";
+        cryptoPath = workingDir + CRYPTO_DIR;
 
     }
 
@@ -361,14 +367,58 @@ public class DeploymentService {
     public void distributeCerts(Map<String, Map<String, String>> orgNameIpMap,
         NetworkConfig config) {
 
-        for (String org : orgNameIpMap.keySet()) {
-            String domain = String.join(".", org, appConfiguration.DOMAIN);
+        Set<String> orgs = Sets.newHashSet(orgNameIpMap.keySet());
+        orgs.remove(config.getOrdererName());
+
+        //orderer
+        try {
+            String path = CRYPTO_DIR_ORDERER.replace(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
+            copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path,
+                config.getOrdererName(), config);
+
+            //copy ca of peers from other org
+            for (String org : orgs) {
+
+                path = PEER_CA_FILE.replaceAll(ORG_PLACEHOLDER, org)
+                    .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
+                copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path,
+                    config.getOrdererName(), config);
+
+                path = CRYPTO_DIR_PEER.replaceAll(ORG_PLACEHOLDER, org)
+                    .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN) + "/msp/";
+                copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path,
+                    config.getOrdererName(), config);
+            }
+        } catch (Throwable t) {
+            throw new RuntimeException(
+                "Cannot write commands of distributing certs for orderer to script file ", t);
+        }
+
+
+        //peers
+        for (String org : orgs) {
             for (String instance : orgNameIpMap.get(org).keySet()) {
                 try {
-                    String path = cryptoPath;
-                    copyFileToGcpVm(path, PROJECT_VM_DIR, instance, config);
+                    String path = CRYPTO_DIR_PEER.replace(ORG_PLACEHOLDER, org)
+                        .replace(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
+                    copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path, instance,
+                        config);
+                    path = ORDERER_CA_FILE.replaceAll(ORG_PLACEHOLDER, org)
+                        .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
+                    copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path, instance,
+                        config);
+                    //copy ca of peers from other org
+                    for (String peerOrg : orgs) {
+                        if (peerOrg.equals(org))
+                            continue;
+                        path = PEER_CA_FILE.replaceAll(ORG_PLACEHOLDER, org)
+                            .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
+                        copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path,
+                            instance, config);
+                    }
                 } catch (Throwable t) {
-                    throw new RuntimeException("Cannot write to script file ", t);
+                    throw new RuntimeException(
+                        "Cannot write commands of distributing certs for peers to script file ", t);
                 }
 
 
@@ -1000,14 +1050,14 @@ public class DeploymentService {
     public String readOrdererCaCert() throws IOException {
 
         String file =
-            workingDir + ORDERER_CA_FILE.replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
+            cryptoPath + ORDERER_CA_FILE.replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
         return readCaCert(file);
     }
 
     public String readPeerCaCert(String org) throws IOException {
 
         String file =
-            workingDir + PEER_CA_FILE.replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN)
+            cryptoPath + PEER_CA_FILE.replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN)
                 .replaceAll(ORG_PLACEHOLDER, org);
         return readCaCert(file);
 
