@@ -31,6 +31,7 @@ import static java.util.stream.Collectors.toMap;
  */
 @Component
 public class DeploymentService {
+    private static final Logger log = LoggerFactory.getLogger(DeploymentService.class);
 
     public static final String LIST_INSTANCES = "bash gcloud compute instances list";
     public static final String SET_PROJECT = "gcloud config set project ";
@@ -41,7 +42,6 @@ public class DeploymentService {
     public static final String SCP_TO_SERVER = "bash "
         + "gcloud compute scp --recurse --project GCP_PROJECT --zone ZONE  PEERNAME:~/FILE DEST";
     public static final String SSH = "bash " + "gcloud compute ssh ";
-    private static final Logger log = LoggerFactory.getLogger(DeploymentService.class);
     public static String ORG_NAMES = "                    - *";
     public static String PROJECT_VM_DIR = "gbaas/";
     public static String CRYPTO_DIR = "crypto-config/";
@@ -52,8 +52,7 @@ public class DeploymentService {
     public static String DOCKER_CMD =
         "docker-compose -f ./gbaas/docker-compose.yaml run CLI bash -c \\\"COMMAND\\\"";
     public static String MSP_SUFFIX = "MSP";
-    public static String PEER_CA_FILE =
-        "peerOrganizations/ORG.DOMAIN/peers/peer0.ORG.DOMAIN/tls/ca.crt";
+    public static String PEER_CA_FILE = "peerOrganizations/ORG.DOMAIN/peers/peer0.ORG.DOMAIN/tls/";
     public static String CRYPTO_FOLDER_FOR_COMPOSER =
         PROJECT_VM_DIR + CRYPTO_DIR + "peerOrganizations/ORG.DOMAIN/users/Admin@ORG.DOMAIN/msp/";
     public static String ORG_PLACEHOLDER = "ORG";
@@ -72,10 +71,12 @@ public class DeploymentService {
     public static String COMPOSER_DELETE_CARD_CMD = "composer card delete -c PeerAdmin@NAME";
 
     public static String ORDERER_CA_FILE =
-        "ordererOrganizations/DOMAIN/orderers/orderer.DOMAIN/tls/ca.crt";
+        "ordererOrganizations/DOMAIN/orderers/orderer.DOMAIN/tls/";
 
-    public static String CRYPTO_DIR_PEER = "peerOrganizations/ORG.DOMAIN/";
-    public static String CRYPTO_DIR_ORDERER = "ordererOrganizations/DOMAIN/";
+    public static String CRYPTO_DIR_PEER = "peerOrganizations/";
+    public static String CRYPTO_DIR_ORDERER = "ordererOrganizations/";
+    public static String CREATE_FOLDER_CMD = "mkdir -p -m u+x %s";
+
 
     private final ObjectMapper mapper;
     private final AppConfiguration appConfiguration;
@@ -108,17 +109,18 @@ public class DeploymentService {
         config.setOrdererName("orderer-google-boa");
         config.setGcpZoneName("us-east1-b");
         config.setChannelName("common");
+        config.setNetworkName("sample-network");
         config.setProperties(Lists.newArrayList(property1, property2));
         DeploymentService ds = new DeploymentService(mapper, appConfiguration);
 
-        //Map<String, Map<String, String>> orgNameIpMap = ds.deployFabric(config, false, false);
+        Map<String, Map<String, String>> orgNameIpMap = ds.deployFabric(config, false, false);
 
         //for testing
-        Map<String, Map<String, String>> orgNameIpMap = ds.getInstanceNameIPMap(config);
+        //Map<String, Map<String, String>> orgNameIpMap = ds.getInstanceNameIPMap(config);
         //
         // ds.createComposerConnectionFile(orgNameIpMap, config);
         // ds.createComposerAdminCard(orgNameIpMap, config);
-        // ds.runScript();
+        ds.runScript();
 
     }
 
@@ -372,57 +374,99 @@ public class DeploymentService {
 
         //orderer
         try {
-            String path = CRYPTO_DIR_ORDERER.replace(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
-            copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path,
+            appendToFile(scriptFile, "echo copying orderer crypto folder");
+            String path = CRYPTO_DIR_ORDERER + appConfiguration.DOMAIN;
+            String instancePath = PROJECT_VM_DIR + CRYPTO_DIR + CRYPTO_DIR_ORDERER;
+            appendToFile(scriptFile, String
+                .join("", SSH, config.getOrdererName(), " --zone ", config.getGcpZoneName(),
+                    " --command \"", String.format(CREATE_FOLDER_CMD, instancePath), "\""));
+            copyFileToGcpVm(cryptoPath + path, instancePath + appConfiguration.DOMAIN,
                 config.getOrdererName(), config);
 
             //copy ca of peers from other org
             for (String org : orgs) {
+                appendToFile(scriptFile, "echo copying peer ca file to orderer");
 
                 path = PEER_CA_FILE.replaceAll(ORG_PLACEHOLDER, org)
                     .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
-                copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path,
-                    config.getOrdererName(), config);
+                instancePath = PROJECT_VM_DIR + CRYPTO_DIR + path;
 
-                path = CRYPTO_DIR_PEER.replaceAll(ORG_PLACEHOLDER, org)
-                    .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN) + "/msp/";
-                copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path,
-                    config.getOrdererName(), config);
+                appendToFile(scriptFile, String
+                    .join("", SSH, config.getOrdererName(), " --zone ", config.getGcpZoneName(),
+                        " --command \"", String.format(CREATE_FOLDER_CMD, instancePath), "\""));
+
+                copyFileToGcpVm(cryptoPath + path + "ca.crt", instancePath, config.getOrdererName(),
+                    config);
+                appendToFile(scriptFile, "echo copying peer msp folder to orderer");
+                String orgDomain = org + "." + appConfiguration.DOMAIN + "/";
+
+                path = CRYPTO_DIR_PEER + orgDomain + "msp/";
+                instancePath = PROJECT_VM_DIR + CRYPTO_DIR + CRYPTO_DIR_PEER;
+
+                appendToFile(scriptFile, String
+                    .join("", SSH, config.getOrdererName(), " --zone ", config.getGcpZoneName(),
+                        " --command \"", String.format(CREATE_FOLDER_CMD, instancePath), "\""));
+                copyFileToGcpVm(cryptoPath + path, instancePath + "msp/", config.getOrdererName(),
+                    config);
             }
         } catch (Throwable t) {
             throw new RuntimeException(
-                "Cannot write commands of distributing certs for orderer to script file ", t);
+                "Cannot write commands of distributing certs to orderer to the script file ", t);
         }
 
 
         //peers
-        for (String org : orgs) {
-            for (String instance : orgNameIpMap.get(org).keySet()) {
-                try {
-                    String path = CRYPTO_DIR_PEER.replace(ORG_PLACEHOLDER, org)
-                        .replace(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
-                    copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path, instance,
-                        config);
+        try {
+            for (String org : orgs) {
+                for (String instance : orgNameIpMap.get(org).keySet()) {
+
+                    appendToFile(scriptFile, "echo copying crypto folder to peer " + instance);
+
+                    String orgDomain = org + "." + appConfiguration.DOMAIN + "/";
+
+                    String path = CRYPTO_DIR_PEER + orgDomain;
+                    String instancePath = PROJECT_VM_DIR + CRYPTO_DIR + CRYPTO_DIR_PEER;
+
+                    appendToFile(scriptFile, String
+                        .join("", SSH, instance, " --zone ", config.getGcpZoneName(),
+                            " --command \"", String.format(CREATE_FOLDER_CMD, instancePath), "\""));
+                    copyFileToGcpVm(cryptoPath + path, instancePath + orgDomain, instance, config);
+
                     path = ORDERER_CA_FILE.replaceAll(ORG_PLACEHOLDER, org)
                         .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
-                    copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path, instance,
-                        config);
+                    instancePath = PROJECT_VM_DIR + CRYPTO_DIR + path;
+
+                    appendToFile(scriptFile, String
+                        .join("", SSH, instance, " --zone ", config.getGcpZoneName(),
+                            " --command \"", String.format(CREATE_FOLDER_CMD, instancePath), "\""));
+                    copyFileToGcpVm(cryptoPath + path + "ca.crt", instancePath, instance, config);
                     //copy ca of peers from other org
+
+
                     for (String peerOrg : orgs) {
                         if (peerOrg.equals(org))
                             continue;
+                        appendToFile(scriptFile, String
+                            .format("echo copying %s ca files to peer %s", peerOrg, instance));
+
                         path = PEER_CA_FILE.replaceAll(ORG_PLACEHOLDER, org)
                             .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
-                        copyFileToGcpVm(cryptoPath + path, PROJECT_VM_DIR + CRYPTO_DIR + path,
-                            instance, config);
+                        instancePath = PROJECT_VM_DIR + CRYPTO_DIR + path;
+
+                        appendToFile(scriptFile, String
+                            .join("", SSH, instance, " --zone ", config.getGcpZoneName(),
+                                " --command \"", String.format(CREATE_FOLDER_CMD, instancePath),
+                                "\""));
+                        copyFileToGcpVm(cryptoPath + path + "ca.crt", instancePath, instance,
+                            config);
                     }
-                } catch (Throwable t) {
-                    throw new RuntimeException(
-                        "Cannot write commands of distributing certs for peers to script file ", t);
+
                 }
-
-
             }
+
+        } catch (Throwable t) {
+            throw new RuntimeException(
+                "Cannot write commands of distributing certs to peers to the script file ", t);
         }
     }
 
@@ -1050,7 +1094,8 @@ public class DeploymentService {
     public String readOrdererCaCert() throws IOException {
 
         String file =
-            cryptoPath + ORDERER_CA_FILE.replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
+            cryptoPath + ORDERER_CA_FILE.replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN)
+                + "ca.crt";
         return readCaCert(file);
     }
 
@@ -1058,7 +1103,7 @@ public class DeploymentService {
 
         String file =
             cryptoPath + PEER_CA_FILE.replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN)
-                .replaceAll(ORG_PLACEHOLDER, org);
+                .replaceAll(ORG_PLACEHOLDER, org) + "ca.crt";
         return readCaCert(file);
 
 
