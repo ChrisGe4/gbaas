@@ -40,14 +40,9 @@ public class DeployFabricNetworkHandler {
             Boolean createInstance,
         @RequestParam(value = "install_software", defaultValue = "false", required = false)
             Boolean installSoftware,
-        // @RequestParam(value = "deploy_composer", defaultValue = "false", required = false) Boolean deployComposer,
         @RequestBody NetworkConfig config) {
 
-        // Map<String, Map<String, String>> orgNameIpMap =
         service.deployFabric(config, createInstance, installSoftware);
-        // if (deployComposer) {
-        //   service.deployComposer(config, orgNameIpMap);
-        // }
 
         service.runScript();
         return "succeed";

@@ -24,7 +24,7 @@ public class AppConfiguration {
   public String PEER_EVENT_PORT = "7053";
   @Value("${composer.connnection.file:composer_connection}")
   public String COMPOSER_CONNECTION_FILE = "composer_connection";
-  @Value("${gcloud.dir:/usr/local/google/home/chrisge/exit/google-cloud-sdk/bin/}")
-  public String GCLOUD_DIR = "/usr/local/google/home/chrisge/exit/google-cloud-sdk/bin/";
+  @Value("${gcloud.dir:/usr/bin/}")
+  public String GCLOUD_DIR = "/usr/bin/";
 
 }
