@@ -110,35 +110,37 @@ public class DeploymentService {
 
   }
 
-  public static void main(String[] args) {
-
-    ObjectMapper mapper = new ObjectMapper();
-    AppConfiguration appConfiguration = new AppConfiguration();
-    Property property1 = new Property();
-    property1.setOrg("google");
-    property1.setNumOfPeers(2);
-    Property property2 = new Property();
-    property2.setOrg("boa");
-    property2.setNumOfPeers(2);
-    NetworkConfig config = new NetworkConfig();
-    config.setGcpProjectName("hyperledger-poc");
-    config.setOrdererName("orderer-google-boa");
-    config.setGcpZoneName("us-east1-b");
-    config.setChannelName("common");
-    config.setNetworkName("sample-network");
-    config.setProperties(Lists.newArrayList(property1, property2));
-    DeploymentService ds = new DeploymentService(mapper, appConfiguration);
-
-    Map<String, Map<String, String>> orgNameIpMap = ds.deployFabric(config, false, false);
-
-    //for testing
-    //Map<String, Map<String, String>> orgNameIpMap = ds.getInstanceNameIPMap(config);
-    //
-    // ds.createComposerConnectionFile(orgNameIpMap, config);
-    // ds.createComposerAdminCard(orgNameIpMap, config);
-    ds.runScript();
-
-  }
+  // ************For testing purpose****************
+  //
+  // public static void main(String[] args) {
+  //
+  //   ObjectMapper mapper = new ObjectMapper();
+  //   AppConfiguration appConfiguration = new AppConfiguration();
+  //   Property property1 = new Property();
+  //   property1.setOrg("google");
+  //   property1.setNumOfPeers(2);
+  //   Property property2 = new Property();
+  //   property2.setOrg("boa");
+  //   property2.setNumOfPeers(2);
+  //   NetworkConfig config = new NetworkConfig();
+  //   config.setGcpProjectName("hyperledger-poc");
+  //   config.setOrdererName("orderer-google-boa");
+  //   config.setGcpZoneName("us-east1-b");
+  //   config.setChannelName("common");
+  //   config.setNetworkName("sample-network");
+  //   config.setProperties(Lists.newArrayList(property1, property2));
+  //   DeploymentService ds = new DeploymentService(mapper, appConfiguration);
+  //
+  //   Map<String, Map<String, String>> orgNameIpMap = ds.deployFabric(config, false, false);
+  //
+  //   //for testing
+  //   //Map<String, Map<String, String>> orgNameIpMap = ds.getInstanceNameIPMap(config);
+  //   //
+  //   // ds.createComposerConnectionFile(orgNameIpMap, config);
+  //   // ds.createComposerAdminCard(orgNameIpMap, config);
+  //   ds.runScript();
+  //
+  // }
 
 
   public Map<String, Map<String, String>> deployFabric(NetworkConfig config,
