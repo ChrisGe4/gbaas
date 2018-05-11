@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 
 /**
  * @author Chris.Ge
@@ -79,5 +81,16 @@ public class DeployFabricNetworkHandler {
 
         return objectMapper.writeValueAsString(config);
     }
+
+    @GetMapping("/list_instances")
+    public String listInstances(@RequestBody NetworkConfig config) {
+
+        Map<String, Map<String, String>> orgNameIpMap = service.getInstanceNameIPMap(config);
+
+        return orgNameIpMap.toString();
+
+
+    }
+
 
 }
