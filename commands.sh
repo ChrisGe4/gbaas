@@ -46,3 +46,5 @@ gcloud iam service-accounts keys create  --iam-account 568020407566-compute@deve
 
 
 gsutil cp -r blockchain/artifacts gs://pic-test/sample-network
+
+curl -sSL https://raw.githubusercontent.com/hyperledger/fabric/release-1.1/scripts/bootstrap.sh | bash

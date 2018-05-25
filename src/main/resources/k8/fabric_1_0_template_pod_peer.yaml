@@ -1,8 +1,8 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  namespace: $namespace
-  name:	$podName
+  namespace: ORG
+  name:	PEER_NAME-ORG
 spec:
   replicas: 1
   strategy: {}
@@ -12,8 +12,8 @@ spec:
       labels:
        app: hyperledger
        role: peer
-       peer-id: $peerID
-       org: $namespace
+       peer-id: PEER_NAME
+       org: ORG
     spec:
       containers:
       - name: couchdb
@@ -22,7 +22,7 @@ spec:
          - containerPort: 5984
 
 
-      - name: $podName 
+      - name: PEER_NAME-ORG
         image: hyperledger/fabric-peer:x86_64-1.0.0
         env:
         - name: CORE_LEDGER_STATE_STATEDATABASE
@@ -34,7 +34,7 @@ spec:
         - name: CORE_LOGGING_LEVEL
           value: "DEBUG"
         - name: CORE_PEER_TLS_ENABLED
-          value: "false"
+          value: "true"
         - name: CORE_PEER_GOSSIP_USELEADERELECTION
           value: "true"
         - name: CORE_PEER_GOSSIP_ORGLEADER
@@ -42,19 +42,19 @@ spec:
         - name: CORE_PEER_PROFILE_ENABLED
           value: "true"
         - name: CORE_PEER_TLS_CERT_FILE
-          value: "/etc/hyperledger/fabric/tls/server.crt" 
+          value: "/etc/hyperledger/crypto/peer/tls/server.crt"
         - name: CORE_PEER_TLS_KEY_FILE
-          value: "/etc/hyperledger/fabric/tls/server.key"
+          value: "/etc/hyperledger/crypto/peer/tls/server.key"
         - name: CORE_PEER_TLS_ROOTCERT_FILE
-          value: "/etc/hyperledger/fabric/tls/ca.crt"
+          value: "/etc/hyperledger/crypto/peer/tls/ca.crt"
         - name: CORE_PEER_ID
-          value: $corePeerID
+          value: PEER_NAME.ORG.DOMAIN
         - name: CORE_PEER_ADDRESS
-          value: $peerAddress
+          value: PEER_NAME.ORG.DOMAIN:7051
         - name: CORE_PEER_GOSSIP_EXTERNALENDPOINT
-          value: $peerGossip
+          value: PEER_NAME.ORG.DOMAIN:7051
         - name: CORE_PEER_LOCALMSPID
-          value: $localMSPID
+          value: ORGMSP
         workingDir: /opt/gopath/src/github.com/hyperledger/fabric/peer
         ports:
          - containerPort: 7051
@@ -63,40 +63,42 @@ spec:
         command: ["peer"]
         args: ["node","start"]
         volumeMounts:
-         #- mountPath: /opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts 
-         #  name: certificate
-         #  subPath: channel-artifacts
-         - mountPath: /etc/hyperledger/fabric/msp 
+         - mountPath: /etc/hyperledger/crypto/peer
            name: certificate
-           #subPath: crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp
-           subPath: $mspPath
-         - mountPath: /etc/hyperledger/fabric/tls
-           name: certificate
-           #subPath: crypto-config/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/
-           subPath: $tlsPath
+         - mountPath: /opt/gopath/src/org/peer/channel-artifacts
+           name: channel
          - mountPath: /host/var/run/
            name: run
       volumes:
+#       - name: certificate
+#         persistentVolumeClaim:
+#             claimName: $pvName
        - name: certificate
-         persistentVolumeClaim:
-             claimName: $pvName
+         hostPath:
+           path: ./crypto-config/peerOrganizations/ORG.DOMAIN/peers/PEER_NAME.ORG.DOMAIN/
+           type: Directory
        - name: run
          hostPath:
-           path: /run
+           path: /var/run
+           type: Directory
+       - name: channel
+         hostPath:
+           path: ./channel
+           type: Directory
        
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-   namespace: $namespace
-   name: $peerID
+   namespace: ORG
+   name: PEER_NAME
 spec:
  selector:
    app: hyperledger
    role: peer
-   peer-id: $peerID
-   org: $namespace
+   peer-id: PEER_NAME
+   org: ORG
  type: NodePort
  ports:
    - name: externale-listen-endpoint

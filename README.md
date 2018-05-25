@@ -38,4 +38,4 @@
    
 ***Make sure you cryptogen and configtx command are in ~/bin/*** 
    
-   if you don't have those binaries, simply run curl -sSL https://goo.gl/6wtTN5 | bash -s 1.1.0
+   if you don't have those binaries, simply run: curl -sSL https://raw.githubusercontent.com/hyperledger/fabric/release-1.1/scripts/bootstrap.sh | bash

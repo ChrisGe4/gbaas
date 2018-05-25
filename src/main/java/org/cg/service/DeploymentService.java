@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -111,36 +112,36 @@ public class DeploymentService {
   }
 
   // ************For testing purpose****************
-  //
-  // public static void main(String[] args) {
-  //
-  //   ObjectMapper mapper = new ObjectMapper();
-  //   AppConfiguration appConfiguration = new AppConfiguration();
-  //   Property property1 = new Property();
-  //   property1.setOrg("google");
-  //   property1.setNumOfPeers(2);
-  //   Property property2 = new Property();
-  //   property2.setOrg("boa");
-  //   property2.setNumOfPeers(2);
-  //   NetworkConfig config = new NetworkConfig();
-  //   config.setGcpProjectName("hyperledger-poc");
-  //   config.setOrdererName("orderer-google-boa");
-  //   config.setGcpZoneName("us-east1-b");
-  //   config.setChannelName("common");
-  //   config.setNetworkName("sample-network");
-  //   config.setProperties(Lists.newArrayList(property1, property2));
-  //   DeploymentService ds = new DeploymentService(mapper, appConfiguration);
-  //
-  //   Map<String, Map<String, String>> orgNameIpMap = ds.deployFabric(config, false, false);
-  //
-  //   //for testing
-  //   //Map<String, Map<String, String>> orgNameIpMap = ds.getInstanceNameIPMap(config);
-  //   //
-  //   // ds.createComposerConnectionFile(orgNameIpMap, config);
-  //   // ds.createComposerAdminCard(orgNameIpMap, config);
-  //   ds.runScript();
-  //
-  // }
+
+  public static void main(String[] args) {
+
+    ObjectMapper mapper = new ObjectMapper();
+    AppConfiguration appConfiguration = new AppConfiguration();
+    Property property1 = new Property();
+    property1.setOrg("google");
+    property1.setNumOfPeers(2);
+    Property property2 = new Property();
+    property2.setOrg("boa");
+    property2.setNumOfPeers(2);
+    NetworkConfig config = new NetworkConfig();
+    config.setGcpProjectName("hyperledger-poc");
+    config.setOrdererName("orderer-google-boa");
+    config.setGcpZoneName("us-east1-b");
+    config.setChannelName("common");
+    config.setNetworkName("sample-network");
+    config.setProperties(Lists.newArrayList(property1, property2));
+    DeploymentService ds = new DeploymentService(mapper, appConfiguration);
+
+    Map<String, Map<String, String>> orgNameIpMap = ds.deployFabric(config, false, false);
+
+    //for testing
+    //Map<String, Map<String, String>> orgNameIpMap = ds.getInstanceNameIPMap(config);
+    //
+    // ds.createComposerConnectionFile(orgNameIpMap, config);
+    // ds.createComposerAdminCard(orgNameIpMap, config);
+    ds.runScript();
+
+  }
 
 
   public Map<String, Map<String, String>> deployFabric(NetworkConfig config,
@@ -178,7 +179,8 @@ public class DeploymentService {
     distributeChannelBlock(orgNameIpMap, config);
     joinChannel(orgNameIpMap, config);
     updateAnchorPeer(orgNameIpMap, config);
-    // ds.installChaincode(orgNameIpMap, config);
+    //installChaincode(orgNameIpMap, config);
+
     //may not need this
     //ds.copyChannelBlockToContainer(orgNameIpMap, config);
     return orgNameIpMap;
@@ -194,13 +196,22 @@ public class DeploymentService {
   }
 
   private void initialEnvVariables(NetworkConfig config) {
-
+    Objects.nonNull(config.getChannelName());
+    Objects.nonNull(config.getGcpProjectName());
+    Objects.nonNull(config.getGcpZoneName());
+    Objects.nonNull(config.getNetworkName());
+    Objects.nonNull(config.getProperties());
     workingDir = appConfiguration.WORKING_DIR + config.getNetworkName() + "/";
     composerPath = workingDir + "composer/";
     cryptoGenCmd = "~/bin/cryptogen generate --output=" + workingDir + "crypto-config --config="
         + workingDir + "cryptogen.yaml";
     scriptFile = workingDir + "script.sh";
     cryptoPath = workingDir + CRYPTO_DIR;
+
+    log.info("Service is using the directories below:");
+    System.out.println("workingDir = " + workingDir);
+    System.out.println("cryptoPath = " + cryptoPath);
+    System.out.println("scriptFile = " + scriptFile);
 
   }
 
@@ -401,32 +412,32 @@ public class DeploymentService {
       copyFileToGcpVm(cryptoPath + path, instancePath + appConfiguration.DOMAIN,
           config.getOrdererName(), config);
 
-      //copy ca of peers from other org
-      for (String org : orgs) {
-        appendToFile(scriptFile, "echo copying peer ca file to orderer");
-
-        path = PEER_CA_FILE.replaceAll(ORG_PLACEHOLDER, org)
-            .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
-        instancePath = PROJECT_VM_DIR + CRYPTO_DIR + path;
-
-        appendToFile(scriptFile, String
-            .join("", SSH, config.getOrdererName(), " --zone ", config.getGcpZoneName(),
-                " --command \"", String.format(CREATE_FOLDER_CMD, instancePath), "\""));
-
-        copyFileToGcpVm(cryptoPath + path + "ca.crt", instancePath, config.getOrdererName(),
-            config);
-        appendToFile(scriptFile, "echo copying peer msp folder to orderer");
-        String orgDomain = org + "." + appConfiguration.DOMAIN + "/";
-
-        path = CRYPTO_DIR_PEER + orgDomain + "msp/";
-        instancePath = PROJECT_VM_DIR + CRYPTO_DIR + CRYPTO_DIR_PEER;
-
-        appendToFile(scriptFile, String
-            .join("", SSH, config.getOrdererName(), " --zone ", config.getGcpZoneName(),
-                " --command \"", String.format(CREATE_FOLDER_CMD, instancePath), "\""));
-        copyFileToGcpVm(cryptoPath + path, instancePath + "msp/", config.getOrdererName(),
-            config);
-      }
+      // copy ca of peers from other org
+      // for (String org : orgs) {
+      //   appendToFile(scriptFile, "echo copying peer ca file to orderer");
+      //
+      //   path = PEER_CA_FILE.replaceAll(ORG_PLACEHOLDER, org)
+      //       .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
+      //   instancePath = PROJECT_VM_DIR + CRYPTO_DIR + path;
+      //
+      //   appendToFile(scriptFile, String
+      //       .join("", SSH, config.getOrdererName(), " --zone ", config.getGcpZoneName(),
+      //           " --command \"", String.format(CREATE_FOLDER_CMD, instancePath), "\""));
+      //
+      //   copyFileToGcpVm(cryptoPath + path + "ca.crt", instancePath, config.getOrdererName(),
+      //       config);
+      //   appendToFile(scriptFile, "echo copying peer msp folder to orderer");
+      //   String orgDomain = org + "." + appConfiguration.DOMAIN + "/";
+      //
+      //   path = CRYPTO_DIR_PEER + orgDomain + "msp/";
+      //   instancePath = PROJECT_VM_DIR + CRYPTO_DIR + CRYPTO_DIR_PEER;
+      //
+      //   appendToFile(scriptFile, String
+      //       .join("", SSH, config.getOrdererName(), " --zone ", config.getGcpZoneName(),
+      //           " --command \"", String.format(CREATE_FOLDER_CMD, instancePath), "\""));
+      //   copyFileToGcpVm(cryptoPath + path, instancePath + "msp/", config.getOrdererName(),
+      //       config);
+      // }
     } catch (Throwable t) {
       throw new RuntimeException(
           "Cannot write commands of distributing certs to orderer to the script file ", t);
@@ -459,24 +470,24 @@ public class DeploymentService {
           copyFileToGcpVm(cryptoPath + path + "ca.crt", instancePath, instance, config);
           //copy ca of peers from other org
 
-          for (String peerOrg : orgs) {
-            if (peerOrg.equals(org)) {
-              continue;
-            }
-            appendToFile(scriptFile, String
-                .format("echo copying %s ca files to peer %s", peerOrg, instance));
-
-            path = PEER_CA_FILE.replaceAll(ORG_PLACEHOLDER, peerOrg)
-                .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
-            instancePath = PROJECT_VM_DIR + CRYPTO_DIR + path;
-
-            appendToFile(scriptFile, String
-                .join("", SSH, instance, " --zone ", config.getGcpZoneName(),
-                    " --command \"", String.format(CREATE_FOLDER_CMD, instancePath),
-                    "\""));
-            copyFileToGcpVm(cryptoPath + path + "ca.crt", instancePath, instance,
-                config);
-          }
+          // for (String peerOrg : orgs) {
+          //   if (peerOrg.equals(org)) {
+          //     continue;
+          //   }
+          //   appendToFile(scriptFile, String
+          //       .format("echo copying %s ca files to peer %s", peerOrg, instance));
+          //
+          //   path = PEER_CA_FILE.replaceAll(ORG_PLACEHOLDER, peerOrg)
+          //       .replaceAll(DOMAIN_PLACEHOLDER, appConfiguration.DOMAIN);
+          //   instancePath = PROJECT_VM_DIR + CRYPTO_DIR + path;
+          //
+          //   appendToFile(scriptFile, String
+          //       .join("", SSH, instance, " --zone ", config.getGcpZoneName(),
+          //           " --command \"", String.format(CREATE_FOLDER_CMD, instancePath),
+          //           "\""));
+          //   copyFileToGcpVm(cryptoPath + path + "ca.crt", instancePath, instance,
+          //       config);
+          // }
 
         }
       }
@@ -592,6 +603,9 @@ public class DeploymentService {
     }
     for (String org : orgNameIpMap.keySet()) {
       for (String instance : orgNameIpMap.get(org).keySet()) {
+        if (config.getOrdererName().equals(instance)) {
+          continue;
+        }
         try {
           String path = workingDir + "chaincode";
 
@@ -812,9 +826,7 @@ public class DeploymentService {
     String org = orgNameIpMap.keySet().stream().filter(o -> !o.equals(config.getOrdererName()))
         .findFirst().get();
     String instance = (String) orgNameIpMap.get(org).keySet().toArray()[0];
-    //todo: make channel name a variable
     String domain = String.join(".", org, appConfiguration.DOMAIN);
-
     String peerCmd = String
         .join("", "peer channel create -o orderer.", appConfiguration.DOMAIN, ":",
             appConfiguration.ORDERER_PORT, " -c ", config.getChannelName(), " -f ",
@@ -830,21 +842,21 @@ public class DeploymentService {
     appendToFile(scriptFile, "echo " + config.getChannelName() + ".block created");
     appendToFile(scriptFile, "sleep 2");
 
-    dockerCmd = String.join("", "docker cp ", "cli." + domain, ":", CONTAINER_WORKING_DIR,
-        config.getChannelName(), ".block ~/");
-    cmd = String.join("", SSH, instance, " --zone ", config.getGcpZoneName(), " --command \"",
-        dockerCmd, "\"");
-    appendToFile(scriptFile, cmd);
+    // dockerCmd = String.join("", "docker cp ", "cli." + domain, ":", CONTAINER_WORKING_DIR,
+    //     config.getChannelName(), ".block ~/");
+    // cmd = String.join("", SSH, instance, " --zone ", config.getGcpZoneName(), " --command \"",
+    //     dockerCmd, "\"");
+    // appendToFile(scriptFile, cmd);
 
-    appendToFile(scriptFile, "sleep 2");
-    appendToFile(scriptFile, String.join("", SSH, instance, " --zone ", config.getGcpZoneName(),
-        " --command \" chmod u+x ~/", config.getChannelName(), ".block\""));
+    // appendToFile(scriptFile, "sleep 2");
+    // appendToFile(scriptFile, String.join("", SSH, instance, " --zone ", config.getGcpZoneName(),
+    //     " --command \" chmod u+x ~/", PROJECT_VM_DIR, config.getChannelName(), ".block\""));
 
-    appendToFile(scriptFile,
-        "echo " + config.getChannelName() + ".block copied from container");
+    // appendToFile(scriptFile,
+    //     "echo " + config.getChannelName() + ".block copied from container");
 
-    //todo: make channel name a variable
-    copyVmFileToGCP(config.getChannelName() + ".block", workingDir, instance, config);
+    copyVmFileToGCP(PROJECT_VM_DIR + config.getChannelName() + ".block", workingDir, instance,
+        config);
     appendToFile(scriptFile, "echo " + config.getChannelName() + ".block copied to server");
 
   }
@@ -941,6 +953,54 @@ public class DeploymentService {
     }
 
   }
+
+  public void packageChaincode(Map<String, Map<String, String>> orgNameIpMap,
+      NetworkConfig config) {
+
+    String org = orgNameIpMap.keySet().stream().filter(o -> !o.equals(config.getOrdererName()))
+        .findFirst().get();
+    String instance = (String) orgNameIpMap.get(org).keySet().toArray()[0];
+    String domain = String.join(".", org, appConfiguration.DOMAIN);
+
+    String packChainCodeCmd = String
+        .join("", "peer chaincode package -n example -p chaincode -v 1.0 example.pak");
+
+    String dockerCmd = DOCKER_CMD.replace("CLI", "cli." + domain)
+        .replace("COMMAND", packChainCodeCmd);
+    String cmd = String
+        .join("", SSH, instance, " --zone ", config.getGcpZoneName(), " --command \"",
+            dockerCmd, "\"");
+
+    appendToFile(scriptFile, cmd);
+    appendToFile(scriptFile, "echo chaincode 'example' packaged");
+
+    appendToFile(scriptFile, "sleep 2");
+    appendToFile(scriptFile, String.join("", SSH, instance, " --zone ", config.getGcpZoneName(),
+        " --command \" chmod u+x ~/", PROJECT_VM_DIR, "example.pak\""));
+
+    copyVmFileToGCP("example.pak", workingDir, instance, config);
+    appendToFile(scriptFile, "echo example.pak copied to server");
+
+  }
+
+
+  public void distributeExampleChainCodePak(Map<String, Map<String, String>> orgNameIpMap,
+      NetworkConfig config
+      // , String instance
+  ) {
+    log.info("calling distributeExampleChainCodePak method");
+    appendToFile(scriptFile, "sending example.pak to peers");
+
+    orgNameIpMap.values().stream().map(Map::keySet).filter(k -> !k.equals(config.getOrdererName()))
+        .forEach(ins -> ins.stream().forEach(vm -> {
+          appendToFile(scriptFile, "echo senting example.pak to " + vm);
+
+          copyFileToGcpVm(workingDir + "example.pak",
+              PROJECT_VM_DIR + "example.pak", vm, config);
+        }));
+
+  }
+
 
   public void installChaincode(Map<String, Map<String, String>> orgNameIpMap,
       NetworkConfig config) {
