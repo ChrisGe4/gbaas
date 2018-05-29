@@ -10,8 +10,6 @@ import org.springframework.stereotype.Component;
 public class AppConfiguration {
 
   // Configurable program variables
-  @Value("${domain:sample.com}")
-  public String DOMAIN = "sample.com";
   @Value("${orderer.port:7050}")
   public String ORDERER_PORT = "7050";
   @Value("${ca.port:7054}")

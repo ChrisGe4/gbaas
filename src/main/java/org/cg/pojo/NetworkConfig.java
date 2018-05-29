@@ -8,7 +8,7 @@ import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonPropertyOrder({
-    "networkName",
+    "domain",
     "gcpProjectName",
     "gcpZoneName",
     "ordererName",
@@ -17,8 +17,8 @@ import java.util.List;
 })
 public class NetworkConfig {
 
-  @JsonProperty("networkName")
-  private String networkName;
+  @JsonProperty("domain")
+  private String domain;
   @JsonProperty("gcpProjectName")
   private String gcpProjectName;
   @JsonProperty("gcpZoneName")
@@ -30,14 +30,14 @@ public class NetworkConfig {
   @JsonProperty("properties")
   private List<Property> properties = null;
 
-  @JsonProperty("networkName")
-  public String getNetworkName() {
-    return networkName;
+  @JsonProperty("domain")
+  public String getDomain() {
+    return domain;
   }
 
-  @JsonProperty("networkName")
-  public void setNetworkName(String networkName) {
-    this.networkName = networkName;
+  @JsonProperty("domain")
+  public void setDomain(String domain) {
+    this.domain = domain;
   }
 
   @JsonProperty("gcpProjectName")
