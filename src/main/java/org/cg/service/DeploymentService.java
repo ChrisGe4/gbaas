@@ -74,7 +74,7 @@ public class DeploymentService {
       PROJECT_VM_DIR + CRYPTO_DIR + "peerOrganizations/ORG.DOMAIN/users/Admin@ORG.DOMAIN/msp/";
   public static String ORG_PLACEHOLDER = "ORG";
   public static String DOMAIN_PLACEHOLDER = "DOMAIN";
-  public static String CONNECTION_FILE_NAME_TEMPLATE = "NETWORKNAME-connection-ORG";
+  public static String CONNECTION_FILE_NAME_TEMPLATE = "DOMAIN-ORG";
   public static String ANCHORPEER_CMD =
       "peer channel update -o ORDERER_HOST:ORDERER_PORT -c CHANNEL_NAME -f ANCHOR_FILE --tls --cafile ORDERER_CA";
   public static String ORDERER_CA_IN_CONTAINER = "/etc/hyperledger/crypto/orderer/tls/ca.crt";
@@ -84,8 +84,8 @@ public class DeploymentService {
   public static String CREATE_CARD_CMD =
       "composer card create -p CONNECTION_JSON -u PeerAdmin -c ADMIN_PEM -k SK_FILE -r PeerAdmin -r ChannelAdmin -f PeerAdmin@NAME.card";
   public static String COMPOSER_IMPORT_CARD_CMD =
-      "composer card import -f PeerAdmin@NAME.card --card PeerAdmin@NAME";
-  public static String COMPOSER_DELETE_CARD_CMD = "composer card delete -c PeerAdmin@NAME";
+      "composer card import -f PeerAdmin@NAME.card -n PeerAdmin@NAME";
+  public static String COMPOSER_DELETE_CARD_CMD = "composer card delete -n PeerAdmin@NAME";
 
   public static String ORDERER_CA_FILE =
       "ordererOrganizations/DOMAIN/orderers/orderer.DOMAIN/tls/";
@@ -1148,8 +1148,8 @@ public class DeploymentService {
             .replace("CHANNEL_NAME", config.getChannelName());
 
         String fileName = String.join("", composerPath,
-            CONNECTION_FILE_NAME_TEMPLATE.replace("NETWORKNAME", networkName)
-                .replace("ORG", org), ".json");
+            CONNECTION_FILE_NAME_TEMPLATE.replace(DOMAIN_PLACEHOLDER, config.getDomain())
+                .replace(ORG_PLACEHOLDER, org), ".json");
         log.info("fileName = " + fileName);
         Files.write(Paths.get(fileName), content.getBytes(), StandardOpenOption.CREATE);
         String host = String.join("-", org, "peer0");
@@ -1212,8 +1212,9 @@ public class DeploymentService {
                 .replaceAll(DOMAIN_PLACEHOLDER, config.getDomain());
 
         // copyFileToGcpVm(cardFile, PROJECT_VM_DIR + "connection.yaml", host, config);
-        String cardName = CONNECTION_FILE_NAME_TEMPLATE.replace("NETWORKNAME", networkName)
-            .replace("ORG", org);
+        String cardName = CONNECTION_FILE_NAME_TEMPLATE
+            .replace(DOMAIN_PLACEHOLDER, config.getDomain())
+            .replace(ORG_PLACEHOLDER, org);
         String createCardCommand =
             CREATE_CARD_CMD.replace("CONNECTION_JSON", connectionFile + ".json")
                 .replace("ADMIN_PEM", adminPemFileFolder + "signcerts/A*.pem")
@@ -1238,16 +1239,19 @@ public class DeploymentService {
         appendToFile(scriptFile,
             "echo creating file " + cardFile + ".card" + " in " + host);
         appendToFile(scriptFile, gcpCmd);
-        String importCardCmd = COMPOSER_IMPORT_CARD_CMD.replaceAll("NAME", cardFile);
+
+        String importCardCmd = COMPOSER_IMPORT_CARD_CMD.replaceAll("NAME", cardName);
+        appendToFile(scriptFile,
+            "echo importing file " + cardFile + ".card" + " in " + host);
         appendToFile(scriptFile, String
-            .join("", SSH, host, " --zone ", config.getGcpZoneName(), " --command \" ",
+            .join("", SSH, host, " --zone ", config.getGcpZoneName(), " --command \"",
                 importCardCmd, "\""));
       }
       log.info("Composer admin cards were created");
 
 
     } catch (Throwable t) {
-      throw new RuntimeException("Cannot Composer admin cards files ", t);
+      throw new RuntimeException("Cannot create Composer admin cards files ", t);
     }
   }
 
