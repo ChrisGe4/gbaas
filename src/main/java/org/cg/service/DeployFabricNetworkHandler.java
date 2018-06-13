@@ -58,8 +58,9 @@ public class DeployFabricNetworkHandler {
 
 
   @PostMapping(value = "/composer", headers = "Accept=application/json")
-  public String deployComposer(@RequestBody NetworkConfig config) {
-    service.deployComposer(config, service.getInstanceNameIPMap(config));
+  public String deployComposer(@RequestBody NetworkConfig config,@RequestParam(value = "bna_url", required = false)
+      String bnaUrl) {
+    service.deployComposer(config,bnaUrl, service.getInstanceNameIPMap(config));
     service.runScript();
     return "succeed";
   }

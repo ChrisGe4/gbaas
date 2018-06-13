@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import jdk.internal.joptsimple.internal.Strings;
 import org.apache.commons.io.FileUtils;
 import org.cg.config.AppConfiguration;
 import org.cg.error.CommandFailedToRunException;
@@ -190,12 +191,16 @@ public class DeploymentService {
     return orgNameIpMap;
   }
 
-  public void deployComposer(NetworkConfig config,
+  public void deployComposer(NetworkConfig config,String bnaUrl,
       Map<String, Map<String, String>> orgNameIpMap) {
     initialEnvVariables(config);
     createScriptFile(config);
     createComposerConnectionFile(orgNameIpMap, config);
     createComposerAdminCard(orgNameIpMap, config);
+
+    if(!Strings.isNullOrEmpty(bnaUrl)){
+
+    }
 
   }
 
