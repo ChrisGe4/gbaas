@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.toMap;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.Resources;
@@ -25,7 +26,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import jdk.internal.joptsimple.internal.Strings;
 import org.apache.commons.io.FileUtils;
 import org.cg.config.AppConfiguration;
 import org.cg.error.CommandFailedToRunException;
@@ -191,14 +191,14 @@ public class DeploymentService {
     return orgNameIpMap;
   }
 
-  public void deployComposer(NetworkConfig config,String bnaUrl,
+  public void deployComposer(NetworkConfig config, String bnaUrl,
       Map<String, Map<String, String>> orgNameIpMap) {
     initialEnvVariables(config);
     createScriptFile(config);
     createComposerConnectionFile(orgNameIpMap, config);
     createComposerAdminCard(orgNameIpMap, config);
 
-    if(!Strings.isNullOrEmpty(bnaUrl)){
+    if (!Strings.isNullOrEmpty(bnaUrl)) {
 
     }
 
